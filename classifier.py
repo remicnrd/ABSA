@@ -2,6 +2,7 @@
 import io
 import keras
 import spacy
+import pickle
 import pandas as pd
 from keras.models import load_model
 from keras.models import Sequential
@@ -12,8 +13,7 @@ from sklearn.preprocessing import LabelEncoder
 
 class Classifier:
     """The Classifier"""
-    vocab_size = 3000
-
+  
     #############################################
     def train(self, trainfile):
         """Trains the classifier model on the training set stored in file trainfile"""
@@ -21,14 +21,15 @@ class Classifier:
         	names = ["polarity", "aspect_category", "aspect_term", "at_location", "sentence"])
 
         # We use a tokenizer for text features, and an encoder for categorical features
-        tokenize = Tokenizer(num_words=vocab_size)
-        tokenize.fit_on_texts(train.sentence)
+        vocab_size = 3000
+        tokenizer = Tokenizer(num_words=vocab_size)
+        tokenizer.fit_on_texts(train.sentence)
         with open('tokenizer.pickle', 'wb') as handle:
         	pickle.dump(tokenizer, handle)
         label_encoder = LabelEncoder()
 
-        sentence_tokenized = pd.DataFrame(tokenize.texts_to_matrix(train.sentence))
-        aspect_tokenized = pd.DataFrame(tokenize.texts_to_matrix(train.aspect_term))
+        sentence_tokenized = pd.DataFrame(tokenizer.texts_to_matrix(train.sentence))
+        aspect_tokenized = pd.DataFrame(tokenizer.texts_to_matrix(train.aspect_term))
 
         integer_category = label_encoder.fit_transform(train.aspect_category)
         one_hot_category = pd.DataFrame(to_categorical(integer_category))
@@ -50,7 +51,7 @@ class Classifier:
         	optimizer='adam', 
         	metrics=['accuracy'])
 
-        model.fit(X, Y, epochs=2, verbose=1)
+        model.fit(X, y, epochs=2, verbose=1)
         model.save('model.h5')
 
 
@@ -68,8 +69,8 @@ class Classifier:
         	tokenizer = pickle.load(handle)
         label_encoder = LabelEncoder()
 
-        sentence_tokenized = pd.DataFrame(tokenize.texts_to_matrix(test.sentence))
-        aspect_tokenized = pd.DataFrame(tokenize.texts_to_matrix(test.aspect_term))
+        sentence_tokenized = pd.DataFrame(tokenizer.texts_to_matrix(test.sentence))
+        aspect_tokenized = pd.DataFrame(tokenizer.texts_to_matrix(test.aspect_term))
         
         integer_category = label_encoder.fit_transform(test.aspect_category)
         one_hot_category = pd.DataFrame(to_categorical(integer_category))
@@ -77,7 +78,7 @@ class Classifier:
         X = pd.concat([one_hot_category, aspect_tokenized, sentence_tokenized], axis=1)
 
         model = load_model('model.h5')
-        predictions = model.predict_classes(X_test,)
+        predictions = model.predict_classes(X,)
         return label_encoder.inverse_transform(predictions)
 
 
