@@ -10,14 +10,36 @@ from keras.layers import Dense, Activation
 from keras.preprocessing.text import Tokenizer
 from sklearn.preprocessing import LabelEncoder
 
+def clean_text(df, colname):
+    """Lowercase, remove stopwords and lemmatize the text column"""
+    nlp = spacy.load('en')
+    lower_sentence = []
+    clean_sentence = []
+
+    for index, row in df.iterrows():
+        lower_sentence.append(row[colname].lower())
+    df[colname] = lower_sentence
+
+    for doc in nlp.pipe(df[colname].astype('unicode').values):
+        if doc.is_parsed:
+            clean_sentence.append(' '.join([n.lemma_ for n in doc if (not n.is_stop and not n.is_punct)])) 
+        else:
+            # To keep the same number of entries
+            clean_sentence.append('')    
+    df[colname] = clean_sentence
+
 class Classifier:
     """The Classifier"""
   
     #############################################
+
     def train(self, trainfile):
         """Trains the classifier model on the training set stored in file trainfile"""
         train = pd.read_csv(trainfile, sep="\t", header=None,
         	names = ["polarity", "aspect_category", "aspect_term", "at_location", "sentence"])
+
+        # Text preprocessing for sentences
+        clean_text(train, 'sentence')
 
         # Create and fit tokenizer with limited word number, save it for prediction
         vocab_size = 3000
@@ -70,6 +92,9 @@ class Classifier:
         """
         test = pd.read_csv(datafile, sep="\t", header=None,
         	names = ["polarity", "aspect_category", "aspect_term", "at_location", "sentence"])
+
+        # Text preprocessing for sentences
+        clean_text(test, 'sentence')
 
         # Use fitted tokenizer  to keep the same BoW vectors
         with open('tokenizer.pickle', 'rb') as handle:
